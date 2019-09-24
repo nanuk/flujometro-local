@@ -1,61 +1,29 @@
-const int sensorPin = I0_4;
-const int measureInterval = 2500;
-volatile int pulseConter;
+int flowPin = 2;    //This is the input pin on the Arduino
+double flowRate;    //This is the value we intend to calculate. 
+volatile int count; //This integer needs to be set as volatile to ensure it updates correctly during the interrupt process.  
  
-// YF-S201
-const float factorK = 7.5;
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(flowPin, INPUT);           //Sets the pin as an input
+  attachInterrupt(0, Flow, RISING);  //Configures interrupt 0 (pin 2 on the Arduino Uno) to run the function "Flow"  
+  Serial.begin(9600);  //Start Serial
+}
+void loop() {
+  // put your main code here, to run repeatedly:  
+  count = 0;      // Reset the counter so we start counting from 0 again
+  interrupts();   //Enables interrupts on the Arduino
+  delay (1000);   //Wait 1 second 
+  noInterrupts(); //Disable the interrupts on the Arduino
+   
+  //Start the math
+  flowRate = (count * 2.25);        //Take counted pulses in the last second and multiply by 2.25mL 
+  flowRate = flowRate * 60;         //Convert seconds to minutes, giving you mL / Minute
+  flowRate = flowRate / 1000;       //Convert mL to Liters, giving you Liters / Minute
  
-// FS300A
-//const float factorK = 5.5;
- 
-// FS400A
-//const float factorK = 3.5;
- 
-float volume = 0;
-long t0 = 0;
- 
- 
-void ISRCountPulse()
-{
-   pulseConter++;
+  Serial.println(flowRate);         //Print the variable flowRate to Serial
 }
  
-float GetFrequency()
+void Flow()
 {
-   pulseConter = 0;
- 
-   interrupts();
-   delay(measureInterval);
-   noInterrupts();
- 
-   return (float)pulseConter * 1000 / measureInterval;
-}
- 
-void SumVolume(float dV)
-{
-   volume += dV / 60 * (millis() - t0) / 1000.0;
-   t0 = millis();
-}
- 
-void setup()
-{
-   Serial.begin(9600);
-   attachInterrupt(digitalPinToInterrupt(sensorPin), ISRCountPulse, RISING);
-   t0 = millis();
-}
- 
-void loop()
-{
-   // obtener frecuencia en Hz
-   float frequency = GetFrequency();
- 
-   // calcular caudal L/min
-   float flow_Lmin = frequency / factorK;
-   SumVolume(flow_Lmin);
- 
-   Serial.print(" Caudal: ");
-   Serial.print(flow_Lmin, 3);
-   Serial.print(" (L/min)\tConsumo:");
-   Serial.print(volume, 1);
-   Serial.println(" (L)");
+   count++; //Every time this function is called, increment "count" by 1
 }
